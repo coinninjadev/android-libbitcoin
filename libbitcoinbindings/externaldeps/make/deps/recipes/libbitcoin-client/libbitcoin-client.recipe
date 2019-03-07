@@ -1,0 +1,19 @@
+depends="libbitcoin-protocol"
+inherit lib
+
+source="https://github.com/libbitcoin/libbitcoin-client.git#4dea7261" # v0.1.0.13 tag
+
+build() {
+
+    echo Patching...
+    patch -p1 --force < $recipe_dir/64BitAndroid.patch
+    echo Building...
+    autoreconf -i
+    ./configure --enable-static --disable-shared --host=$cross --prefix=$install_dir \
+        --without-tests --without-examples ${ENABLE_TESTNET:+--enable-testnet}
+    make -j 4
+    make install
+}
+
+include="include/bitcoin/*"
+lib="lib/libbitcoin-client.a"

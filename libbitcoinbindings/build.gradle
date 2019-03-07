@@ -1,0 +1,192 @@
+
+buildscript {
+
+    repositories {
+        mavenCentral()
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.3.1'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+
+apply plugin: 'com.android.library'
+apply plugin: 'maven'
+
+def buildVersion = System.getenv("CN_LIB_BITCOIN_VERSION") ? System.getenv("CN_LIB_BITCOIN_VERSION") : "0.0"
+def jobID = System.getenv("CI_JOB_ID") ? System.getenv("CI_JOB_ID") : "30"
+def nexusUID = System.getenv("CN_NEXUS_UID") ?  System.getenv("CN_NEXUS_UID") : ""
+def nexusPWD = System.getenv("CN_NEXUS_PWD") ?  System.getenv("CN_NEXUS_PWD") : ""
+
+def currentVersion = buildVersion + "." + jobID
+
+
+android {
+    splits {
+
+        // Configures multiple APKs based on ABI.
+        abi {
+
+            // Enables building multiple APKs per ABI.
+            enable true
+
+            // By default all ABIs are included, so use reset() and include to specify that we only
+            // want APKs for x86, armeabi-v7a, and mips.
+
+            // Resets the list of ABIs that Gradle should create APKs for to none.
+            reset()
+
+            // Specifies a list of ABIs that Gradle should create APKs for.
+            //include "x86", "armeabi-v7a", "mips"
+            include "x86", "x86_64", "armeabi-v7a", "arm64-v8a"
+
+            // Specifies that we do not want to also generate a universal APK that includes all ABIs.
+            universalApk false
+        }
+    }
+    compileSdkVersion 26
+
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        sourceSets.main {
+            jniLibs.srcDir "jniLibs"
+        }
+        externalNativeBuild {
+            ndkBuild{
+                targets "LibbitcoinBindings"
+                arguments "NDK_APPLICATION_MK:=./externaldeps/make/jniNDK/Application.mk"
+                arguments "PROJECT_DIR:="+projectDir.getPath()
+                cFlags "-DTEST_C_FLAG1", "-DTEST_C_FLAG2"
+                cppFlags "-DTEST_CPP_FLAG2", "-DTEST_CPP_FLAG2"
+                abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+                //abiFilters 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'arm64-v8a'
+            }
+
+        }
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        ndkBuild{
+            path "./externaldeps/make/jniNDK/Android.mk"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'commons-codec:commons-codec:1.10'
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation "org.powermock:powermock-module-junit4:1.6.6"
+    testImplementation "org.powermock:powermock-module-junit4-rule:1.6.6"
+    testImplementation "org.powermock:powermock-api-mockito:1.6.6"
+    testImplementation "org.powermock:powermock-classloading-xstream:1.6.6"
+    // Robolectric
+    testImplementation "org.robolectric:robolectric:3.7.1"
+    testImplementation "org.robolectric:shadows-supportv4:3.7"
+
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+
+    androidTestImplementation "org.powermock:powermock-module-junit4:1.6.6"
+    androidTestImplementation "org.powermock:powermock-module-junit4-rule:1.6.6"
+    androidTestImplementation "org.powermock:powermock-api-mockito:1.6.6"
+}
+
+task libbitcoinStaticLibBuild_x86(type:Exec) {
+    println('Building x86 libbitcoin and static library dependencies....')
+    description = 'Uses make to build libbitcoin and all static library dependencies'
+
+    workingDir './externaldeps/make/deps'
+
+    commandLine "make"
+    args "libbitcoin-client.build-android-x86"
+}
+
+task libbitcoinStaticLibBuild_x64(type:Exec) {
+    println('Building x86 libbitcoin and static library dependencies....')
+    description = 'Uses make to build libbitcoin and all static library dependencies'
+
+    workingDir './externaldeps/make/deps'
+
+    commandLine "make"
+    args "libbitcoin-client.build-android-x64"
+}
+
+
+task libbitcoinStaticLibBuild_armeabiv7a(type:Exec) {
+    println('Building arm libbitcoin and static library dependencies....')
+    description = 'Uses make to build libbitcoin and all static library dependencies'
+
+    workingDir './externaldeps/make/deps'
+
+    commandLine "make"
+    args "libbitcoin-client.build-android-armeabiv7a"
+}
+
+task libbitcoinStaticLibBuild_arm64v8a(type:Exec) {
+    println('Building arm libbitcoin and static library dependencies....')
+    description = 'Uses make to build libbitcoin and all static library dependencies'
+
+    workingDir './externaldeps/make/deps'
+
+    commandLine "make"
+    args "libbitcoin-client.build-android-arm64v8a"
+}
+
+task libbitcoinStaticLibBuild_mips(type:Exec) {
+    println('Building libbitcoin and static library dependencies....')
+    description = 'Uses make to build libbitcoin and all static library dependencies'
+
+    workingDir './externaldeps/make/deps'
+    commandLine "make"
+    args "libbitcoin-client.build-android-mips"
+}
+
+task assembleAll {
+    dependsOn libbitcoinStaticLibBuild_x86, libbitcoinStaticLibBuild_x64, libbitcoinStaticLibBuild_armeabiv7a, libbitcoinStaticLibBuild_arm64v8a
+
+    doLast {
+        assemble
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "https://nexus.coinninja.net/repository/maven-releases/") {
+                authentication(
+                     userName: nexusUID, 
+                     password: nexusPWD)
+                pom.groupId = "com.coinninja.libbitcoin"
+                pom.artifactId = "libbitcoinbindings-release"
+                pom.version = currentVersion
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    google()
+    jcenter()
+    maven { url "https://nexus.coinninja.net/repository/maven-releases/" }
+}

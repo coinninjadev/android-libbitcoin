@@ -1,0 +1,41 @@
+---
+image: registry.coinninja.net/engineering/android-ndk:latest
+
+stages:
+  - test
+  - deploy
+
+before_script:
+  - export ANDROID_HOME=/sdk-tools
+  - export ANDROID_NDK_HOME=/opt/android-ndk/android-ndk-r19
+  - export PATH=$PATH:/sdk-tools/platform-tools/
+  - export PATH=$PATH:$ANDROID_NDK_HOME
+
+instrumentedTest:
+  stage: test
+  except:
+    - branches
+  script:
+    - ./gradlew connectedAndroidTest
+
+createAAR:
+  stage: deploy
+  only:
+    - test
+    - develop
+    - maven-repo
+  artifacts:
+    name: "libBitcoin.aar"
+    when: on_success
+    paths:
+    - ./libbitcoinbindings/build/outputs/aar/libbitcoinbindings-release.aar
+  script:
+    - apt-get -y update
+    - apt-get -y install autoconf automake cmake git libtool pkg-config protobuf-compiler clang astyle
+    - apt-get -y install patch
+    - patch --version
+    - cd ./libbitcoinbindings
+    - ./gradlew --version
+#    - ./gradlew assembleAll --stacktrace
+    - ./gradlew build --stacktrace
+    - ./gradlew uploadArchives --stacktrace
